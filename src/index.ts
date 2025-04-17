@@ -14,11 +14,12 @@ type Params = {
 
 // <docs-tag name="workflow-entrypoint">
 export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
+
 	async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
 		// Can access bindings on `this.env`
 		// Can access params on `event.payload`
 
-		const files = await step.do('my first step', async () => {
+		const files = await step.do('Step 1: Fetch some files', async () => {
 			// Fetch a list of files from $SOME_SERVICE
 			return {
 				inputParams: event,
@@ -35,23 +36,23 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 			};
 		});
 
-		// You can optionally have a Workflow wait for additional data:
-		// human approval or an external webhook or HTTP request, before progressing.
-		// You can submit data via HTTP POST to /accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events/{eventName}
-		const waitForApproval = await step.waitForEvent('request-approval', {
-			type: 'approval', // define an optional key to switch on
-			timeout: '1 minute', // keep it short for the example!
-		});
+		// // You can optionally have a Workflow wait for additional data:
+		// // human approval or an external webhook or HTTP request, before progressing.
+		// // You can submit data via HTTP POST to /accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events/{eventName}
+		// const waitForApproval = await step.waitForEvent('request-approval', {
+		// 	type: 'approval', // define an optional key to switch on
+		// 	timeout: '1 minute', // keep it short for the example!
+		// });
 
-		const apiResponse = await step.do('some other step', async () => {
+		const apiResponse = await step.do('Step 2: Call an API', async () => {
 			let resp = await fetch('https://api.cloudflare.com/client/v4/ips');
 			return await resp.json<any>();
 		});
 
-		await step.sleep('wait on something', '1 minute');
+		await step.sleep('Sleep: wait on something', '1 minute');
 
 		await step.do(
-			'make a call to write that could maybe, just might, fail',
+			'Step 4: Make a call to write to DB - and it may fail',
 			// Define a retry strategy
 			{
 				retries: {
