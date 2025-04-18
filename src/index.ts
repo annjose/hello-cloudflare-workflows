@@ -9,7 +9,12 @@ type Params = {
 	metadata: Record<string, string>;
 };
 
+const SECONDS = 1000;
+
 export class MyDurableObject extends DurableObject<Env> {
+	protected ctx: DurableObjectState;
+	protected storage: DurableObjectStorage;
+	
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
 	 * 	`DurableObjectStub::get` for a given identifier (no-op constructors can be omitted)
@@ -19,6 +24,9 @@ export class MyDurableObject extends DurableObject<Env> {
 	 */
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
+		
+		this.ctx = ctx;
+    	this.storage = ctx.storage;
 	}
 
 	/**
@@ -34,6 +42,22 @@ export class MyDurableObject extends DurableObject<Env> {
 
 	async getPostIdList(): Promise<Array<number>> {
 		return [43705649, 43711089];
+	}
+
+	async startAlarm(_request: Request): Promise<Response> {
+		// If there is no alarm currently set, set one for 10 seconds from now
+		let currentAlarm = await this.storage.getAlarm();
+		if (currentAlarm == null) {
+			await this.storage.setAlarm(Date.now() + 10 * SECONDS);
+		}
+		return new Response('Alarm set successfully', { status: 200 });
+	}
+
+	async alarm() {
+		// The alarm handler will be invoked whenever an alarm fires.
+		// You can use this to do work, read from the Storage API, make HTTP calls
+		// and set future alarms to run using this.storage.setAlarm() from within this handler.
+		console.log('Alarm fired!');
 	}
 }
 
@@ -110,6 +134,8 @@ export default {
 		// Call the `sayHello()` RPC method on the stub to invoke the method on
 		// the remote Durable Object instance
 		const postIdsToProcess = await stub.getPostIdList();
+
+		await stub.startAlarm(req);
 		
 		// Spawn a new instance and return the ID and status
 		let instance = await env.MY_WORKFLOW.create();
