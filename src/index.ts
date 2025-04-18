@@ -31,8 +31,11 @@ export class MyDurableObject extends DurableObject<Env> {
 	async sayHello(name: string): Promise<string> {
 		return `Hello, ${name}!`;
 	}
-}
 
+	async getPostIdList(): Promise<Array<number>> {
+		return [43705649, 43711089];
+	}
+}
 
 // <docs-tag name="workflow-entrypoint">
 export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
@@ -41,69 +44,39 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 		// Can access bindings on `this.env`
 		// Can access params on `event.payload`
 
-		// const xyz = await step.do('Step 0: Read Durable Object MY_DURABLE_OBJECT', async () => {
-		// 	// Read from a Durable Object
-		// 	const id: DurableObjectId = this.env.MY_DURABLE_OBJECT.idFromName("foo");
+		const postIdsToProcess = await step.do('Step 1: Read Durable Object MY_DURABLE_OBJECT', async () => {
+			// Read from a Durable Object
+			const id: DurableObjectId = this.env.MY_DURABLE_OBJECT.idFromName("foo");
 
-		// 	// Create a stub to open a communication channel with the Durable
-		// 	// Object instance.
-		// 	const stub = this.env.MY_DURABLE_OBJECT.get(id);
+			// Create a stub to open a communication channel with the Durable
+			// Object instance.
+			const stub = this.env.MY_DURABLE_OBJECT.get(id);
 
-		// 	// Call the `sayHello()` RPC method on the stub to invoke the method on
-		// 	// the remote Durable Object instance
-		// 	const greeting = await stub.sayHello("world");
-		// });
+			// Call the `sayHello()` RPC method on the stub to invoke the method on
+			// the remote Durable Object instance
+			const greeting = await stub.sayHello("world in step 0");
+			
+			const postIds = await stub.getPostIdList();
+			return postIds;
+		});
 
-		const files = await step.do('Step 1: Fetch some files', async () => {
+		await step.sleep('Sleep: wait for a minute', '1 minute');
+
+		const getData = await step.do('Step 2: Fetch HN post comments from Algolia', async () => {
 			// Fetch a list of files from $SOME_SERVICE
 			return {
 				inputParams: event,
-				files: [
-					'doc_7392_rev3.pdf',
-					'report_x29_final.pdf',
-					'memo_2024_05_12.pdf',
-					'file_089_update.pdf',
-					'proj_alpha_v2.pdf',
-					'data_analysis_q2.pdf',
-					'notes_meeting_52.pdf',
-					'summary_fy24_draft.pdf',
-				],
+				postIds: postIdsToProcess,
 			};
 		});
 
-		// // You can optionally have a Workflow wait for additional data:
-		// // human approval or an external webhook or HTTP request, before progressing.
-		// // You can submit data via HTTP POST to /accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events/{eventName}
-		// const waitForApproval = await step.waitForEvent('request-approval', {
-		// 	type: 'approval', // define an optional key to switch on
-		// 	timeout: '1 minute', // keep it short for the example!
-		// });
-
-		const apiResponse = await step.do('Step 2: Call an API', async () => {
-			let resp = await fetch('https://api.cloudflare.com/client/v4/ips');
-			return await resp.json<any>();
+		const summarizePostResults = await step.do('Step 3: Summarize the post', async () => {
+			// Summarize the post
+			return {
+				postId: getData.postIds[0],
+				summary: 'This is a summary of the post.',
+			};
 		});
-
-		// await step.sleep('Sleep: wait on something', '1 minute');
-
-		// await step.do(
-		// 	'Step 4: Make a call to write to DB - and it may fail',
-		// 	// Define a retry strategy
-		// 	{
-		// 		retries: {
-		// 			limit: 5,
-		// 			delay: '5 second',
-		// 			backoff: 'exponential',
-		// 		},
-		// 		timeout: '15 minutes',
-		// 	},
-		// 	async () => {
-		// 		// Do stuff here, with access to the state from our previous steps
-		// 		if (Math.random() > 0.5) {
-		// 			throw new Error('API call to $STORAGE_SYSTEM failed');
-		// 		}
-		// 	},
-		// );
 	}
 }
 // </docs-tag name="workflow-entrypoint">
@@ -127,18 +100,17 @@ export default {
 			});
 		}
 
-			// Read from a Durable Object
-			const id_new: DurableObjectId = env.MY_DURABLE_OBJECT.idFromName("foo");
+		// Read from a Durable Object
+		const id_new: DurableObjectId = env.MY_DURABLE_OBJECT.idFromName("foo");
 
-			// Create a stub to open a communication channel with the Durable
-			// Object instance.
-			const stub = env.MY_DURABLE_OBJECT.get(id_new);
+		// Create a stub to open a communication channel with the Durable
+		// Object instance.
+		const stub = env.MY_DURABLE_OBJECT.get(id_new);
 
-			// Call the `sayHello()` RPC method on the stub to invoke the method on
-			// the remote Durable Object instance
-			const greeting = await stub.sayHello("world new");
-
-
+		// Call the `sayHello()` RPC method on the stub to invoke the method on
+		// the remote Durable Object instance
+		const postIdsToProcess = await stub.getPostIdList();
+		
 		// Spawn a new instance and return the ID and status
 		let instance = await env.MY_WORKFLOW.create();
 		// You can also set the ID to match an ID in your own system
@@ -147,10 +119,11 @@ export default {
 		// 	id: 'id-from-your-system',
 		// 	params: { payload: 'to send' },
 		// });
+
 		return Response.json({
 			id: instance.id,
 			details: await instance.status(),
-			greeting
+			postIdsToProcess
 		});
 	},
 };
