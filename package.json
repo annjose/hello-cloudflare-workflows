@@ -3,10 +3,11 @@
 	"version": "0.0.1",
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"start": "wrangler dev"
+		"start": "wrangler dev",
+		"dev": "wrangler dev",
+		"generate-types": "wrangler types"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250417.0",
 		"typescript": "^5.0.4",
 		"wrangler": "^4.12.0"
 	},
