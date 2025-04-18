@@ -14,6 +14,7 @@ const SECONDS = 1000;
 export class MyDurableObject extends DurableObject<Env> {
 	protected ctx: DurableObjectState;
 	protected storage: DurableObjectStorage;
+	protected env: Env;
 	
 	/**
 	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
@@ -27,6 +28,7 @@ export class MyDurableObject extends DurableObject<Env> {
 		
 		this.ctx = ctx;
     	this.storage = ctx.storage;
+		this.env = env;
 	}
 
 	/**
@@ -58,6 +60,9 @@ export class MyDurableObject extends DurableObject<Env> {
 		// You can use this to do work, read from the Storage API, make HTTP calls
 		// and set future alarms to run using this.storage.setAlarm() from within this handler.
 		console.log('Alarm fired!');
+		const instance = await this.env.MY_WORKFLOW.create();
+		const status = await instance.status();
+		console.log('Worflow instance MY_WORKFLOW created. id:', instance.id, 'status:', status);
 	}
 }
 
